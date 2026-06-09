@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <link rel="icon" type="image/jpeg" href="sedel.jpg" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Painel Administrativo — SEDEL TI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Open+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --azul-escuro: #1a4fa0;
+      --azul-medio: #1e6cc8;
+      --azul-claro: #0080c8;
+      --verde: #009b3a;
+      --amarelo: #ffcc00;
+      --branco: #ffffff;
+      --cinza-fundo: #f2f5fa;
+      --cinza-borda: #dde3ee;
+      --cinza-texto: #4a5568;
+      --sombra: 0 4px 24px rgba(26,79,160,0.10);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Open Sans', sans-serif;
+      background: var(--cinza-fundo);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── TOPO ── */
+    .topo-tricolor {
+      display: flex;
+      height: 5px;
+    }
+    .topo-tricolor span:nth-child(1) { background: var(--verde); flex: 1; }
+    .topo-tricolor span:nth-child(2) { background: var(--amarelo); flex: 1; }
+    .topo-tricolor span:nth-child(3) { background: var(--azul-claro); flex: 1; }
+
+    .topbar {
+      background: var(--azul-escuro);
+      padding: 12px 28px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .topbar img {
+      height: 40px;
+      border-radius: 6px;
+      background: #fff;
+      padding: 3px 6px;
+      object-fit: contain;
+    }
+    .topbar-divider {
+      width: 1px; height: 34px;
+      background: rgba(255,255,255,0.25);
+    }
+    .topbar-info h1 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 15px; font-weight: 700;
+      color: #fff;
+    }
+    .topbar-info p {
+      font-size: 11px;
+      color: rgba(255,255,255,0.70);
+      margin-top: 2px;
+    }
+    .topbar-spacer { flex: 1; }
+    .topbar-admin {
+      display: flex; align-items: center; gap: 8px;
+      color: rgba(255,255,255,0.85);
+      font-size: 12px;
+    }
+    .topbar-admin span {
+      width: 32px; height: 32px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px;
+    }
+    .btn-sair {
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.25);
+      color: #fff;
+      font-size: 11px; font-weight: 600;
+      font-family: 'Montserrat', sans-serif;
+      padding: 5px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      letter-spacing: 0.4px;
+      transition: background 0.2s;
+      margin-left: 8px;
+    }
+    .btn-sair:hover { background: rgba(255,255,255,0.22); }
+
+    /* ── NAV ABAS ── */
+    .nav-abas {
+      background: var(--branco);
+      border-bottom: 1px solid var(--cinza-borda);
+      display: flex;
+      padding: 0 28px;
+      gap: 2px;
+    }
+    .aba {
+      padding: 13px 18px;
+      font-size: 13px; font-weight: 600;
+      font-family: 'Montserrat', sans-serif;
+      color: var(--cinza-texto);
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+      white-space: nowrap;
+      user-select: none;
+    }
+    .aba:hover { color: var(--azul-escuro); }
+    .aba.ativa {
+      color: var(--azul-escuro);
+      border-bottom-color: var(--azul-escuro);
+    }
+
+    /* ── CONTEÚDO ── */
+    .conteudo {
+      flex: 1;
+      padding: 28px;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* ── SEÇÃO ── */
+    .secao { display: none; }
+    .secao.ativa { display: block; }
+
+    /* ── CARDS DE MÉTRICAS ── */
+    .metricas {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .metrica-card {
+      background: var(--branco);
+      border-radius: 10px;
+      padding: 18px 20px;
+      box-shadow: var(--sombra);
+      border-top: 4px solid var(--azul-escuro);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .metrica-card.verde { border-top-color: var(--verde); }
+    .metrica-card.amarelo { border-top-color: #e6a800; }
+    .metrica-card.vermelho { border-top-color: #dc2626; }
+    .metrica-label {
+      font-size: 11px; font-weight: 600;
+      font-family: 'Montserrat', sans-serif;
+      color: var(--cinza-texto);
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .metrica-valor {
+      font-size: 30px; font-weight: 700;
+      font-family: 'Montserrat', sans-serif;
+      color: var(--azul-escuro);
+      line-height: 1;
+    }
+    .metrica-card.verde .metrica-valor { color: var(--verde); }
+    .metrica-card.amarelo .metrica-valor { color: #b45309; }
+    .metrica-card.vermelho .metrica-valor { color: #dc2626; }
+    .metrica-sub { font-size: 11.5px; color: #8896aa; }
+
+    /* ── TABELA ── */
+    .table-wrap {
+      background: var(--branco);
+      border-radius: 10px;
+      box-shadow: var(--sombra);
+      overflow: hidden;
+    }
+    .table-header {
+      padding: 16px 20px;
+      display: flex; align-items: center; gap: 12px;
+      border-bottom: 1px solid var(--cinza-borda);
+    }
+    .table-header h2 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 14px; font-weight: 700;
+      color: var(--azul-escuro);
+      flex: 1;
+    }
+    .filtro-select {
+      border: 1.5px solid var(--cinza-borda);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 12.5px;
+      font-family: 'Open Sans', sans-serif;
+      color: var(--cinza-texto);
+      background: var(--cinza-fundo);
+      outline: none;
+      cursor: pointer;
+    }
+    .filtro-select:focus { border-color: var(--azul-medio); }
+    .busca-input {
+      border: 1.5px solid var(--cinza-borda);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 12.5px;
+      font-family: 'Open Sans', sans-serif;
+      color: #1a202c;
+      background: var(--cinza-fundo);
+      outline: none;
+      width: 200px;
+    }
+    .busca-input:focus { border-color: var(--azul-medio); background: #fff; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    thead { background: #f7f9fc; }
+    th {
+      padding: 11px 16px;
+      text-align: left;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 11px; font-weight: 700;
+      color: var(--cinza-texto);
+      text-transform: uppercase; letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--cinza-borda);
+    }
+    td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--cinza-borda);
+      color: #2d3748;
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f7faff; }
+
+    /* ── BADGES DE STATUS ── */
+    .badge {
+      display: inline-block;
+      font-size: 10.5px; font-weight: 700;
+      padding: 3px 10px; border-radius: 20px;
+      font-family: 'Montserrat', sans-serif;
+      letter-spacing: 0.4px;
+    }
+    .badge-aberto   { background: #dbeafe; color: #1d4ed8; }
+    .badge-andamento{ background: #fef9c3; color: #854d0e; }
+    .badge-fechado  { background: #dcfce7; color: #166534; }
+    .badge-n0, .badge-n1 { background: #dcfce7; color: #166534; }
+    .badge-n2 { background: #fef9c3; color: #854d0e; }
+    .badge-n3 { background: #fee2e2; color: #991b1b; }
+
+    /* ── BOTÕES DE AÇÃO ── */
+    .btn-acao {
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 11.5px; font-weight: 600;
+      font-family: 'Montserrat', sans-serif;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s;
+      margin-right: 4px;
+    }
+    .btn-ver   { background: #eff6ff; color: #1d4ed8; }
+    .btn-ver:hover { background: #dbeafe; }
+    .btn-fechar { background: #f0fdf4; color: #166534; }
+    .btn-fechar:hover { background: #dcfce7; }
+    .btn-excluir { background: #fff1f2; color: #be123c; }
+    .btn-excluir:hover { background: #ffe4e6; }
+    .btn-editar { background: #fffbeb; color: #92400e; }
+    .btn-editar:hover { background: #fef3c7; }
+
+    /* ── MODAL ── */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(10,30,70,0.45);
+      z-index: 100;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.aberto { display: flex; }
+    .modal {
+      background: var(--branco);
+      border-radius: 12px;
+      width: 90%; max-width: 520px;
+      box-shadow: 0 8px 40px rgba(26,79,160,0.18);
+      overflow: hidden;
+      animation: slideUp 0.2s ease;
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .modal-header {
+      background: var(--azul-escuro);
+      padding: 14px 20px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .modal-header h3 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 14px; font-weight: 700; color: #fff; flex: 1;
+    }
+    .modal-fechar {
+      background: none; border: none;
+      color: rgba(255,255,255,0.7);
+      font-size: 20px; cursor: pointer; line-height: 1;
+      padding: 0 4px;
+    }
+    .modal-fechar:hover { color: #fff; }
+    .modal-tricolor { display: flex; height: 3px; }
+    .modal-tricolor span:nth-child(1) { background: var(--verde); flex: 1; }
+    .modal-tricolor span:nth-child(2) { background: var(--amarelo); flex: 1; }
+    .modal-tricolor span:nth-child(3) { background: var(--azul-claro); flex: 1; }
+    .modal-body { padding: 20px; }
+    .detalhe-linha {
+      display: flex; gap: 8px;
+      padding: 8px 0; border-bottom: 1px solid var(--cinza-borda);
+      font-size: 13px;
+    }
+    .detalhe-linha:last-child { border-bottom: none; }
+    .detalhe-label {
+      font-weight: 600; color: var(--cinza-texto);
+      min-width: 110px; font-size: 12px;
+      font-family: 'Montserrat', sans-serif;
+    }
+    .detalhe-valor { color: #1a202c; flex: 1; }
+    .resposta-area {
+      width: 100%;
+      border: 1.5px solid var(--cinza-borda);
+      border-radius: 8px;
+      padding: 10px 13px;
+      font-size: 13px;
+      font-family: 'Open Sans', sans-serif;
+      margin-top: 12px;
+      resize: vertical;
+      min-height: 80px;
+      outline: none;
+    }
+    .resposta-area:focus { border-color: var(--azul-medio); }
+    .modal-actions {
+      display: flex; gap: 8px; justify-content: flex-end;
+      padding: 14px 20px;
+      border-top: 1px solid var(--cinza-borda);
+    }
+    .btn-primario {
+      background: var(--azul-escuro); color: #fff;
+      border: none; border-radius: 8px;
+      padding: 8px 20px;
+      font-size: 13px; font-weight: 600;
+      font-family: 'Montserrat', sans-serif;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-primario:hover { background: var(--azul-medio); }
+    .btn-secundario {
+      background: var(--cinza-fundo);
+      border: 1.5px solid var(--cinza-borda);
+      color: var(--cinza-texto);
+      border-radius: 8px;
+      padding: 8px 20px;
+      font-size: 13px; font-weight: 600;
+      font-family: 'Montserrat', sans-serif;
+      cursor: pointer;
+    }
+    .btn-secundario:hover { background: var(--cinza-borda); }
+
+    /* ── SEÇÃO USUÁRIOS ── */
+    .form-usuario {
+      background: var(--branco);
+      border-radius: 10px;
+      box-shadow: var(--sombra);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .form-usuario h2 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 14px; font-weight: 700;
+      color: var(--azul-escuro);
+      margin-bottom: 16px;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .form-grupo { display: flex; flex-direction: column; gap: 5px; }
+    .form-grupo label {
+      font-size: 11.5px; font-weight: 600;
+      font-family: 'Montserrat', sans-serif;
+      color: var(--cinza-texto);
+      text-transform: uppercase; letter-spacing: 0.4px;
+    }
+    .form-grupo input, .form-grupo select {
+      border: 1.5px solid var(--cinza-borda);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-family: 'Open Sans', sans-serif;
+      color: #1a202c;
+      background: var(--cinza-fundo);
+      outline: none;
+    }
+    .form-grupo input:focus, .form-grupo select:focus {
+      border-color: var(--azul-medio); background: #fff;
+    }
+    .form-footer { margin-top: 16px; display: flex; justify-content: flex-end; }
+
+    /* ── RELATÓRIOS ── */
+    .relatorio-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+    .relatorio-card {
+      background: var(--branco);
+      border-radius: 10px;
+      box-shadow: var(--sombra);
+      padding: 20px;
+      display: flex; gap: 14px; align-items: flex-start;
+    }
+    .relatorio-icone {
+      width: 44px; height: 44px;
+      border-radius: 10px;
+      background: #eff6ff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+    }
+    .relatorio-info h3 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 13px; font-weight: 700;
+      color: var(--azul-escuro); margin-bottom: 4px;
+    }
+    .relatorio-info p {
+      font-size: 12px; color: var(--cinza-texto); line-height: 1.5;
+    }
+    .relatorio-info .btn-exportar {
+      display: inline-block; margin-top: 10px;
+      background: var(--azul-escuro); color: #fff;
+      border: none; border-radius: 6px;
+      padding: 6px 14px; font-size: 12px; font-weight: 600;
+      font-family: 'Montserrat', sans-serif;
+      cursor: pointer; transition: background 0.2s;
+    }
+    .relatorio-info .btn-exportar:hover { background: var(--azul-medio); }
+
+    /* ── TOAST ── */
+    .toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: var(--azul-escuro); color: #fff;
+      padding: 12px 20px; border-radius: 10px;
+      font-size: 13px; font-family: 'Montserrat', sans-serif; font-weight: 600;
+      box-shadow: 0 4px 20px rgba(26,79,160,0.25);
+      opacity: 0; pointer-events: none;
+      transform: translateY(10px);
+      transition: all 0.25s;
+      z-index: 200;
+    }
+    .toast.visivel { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    .toast.sucesso { background: #166534; }
+
+    /* ── RODAPÉ ── */
+    .footer {
+      text-align: center;
+      font-size: 10.5px; color: #8896aa;
+      padding: 10px 0;
+      background: var(--branco);
+      border-top: 1px solid var(--cinza-borda);
+      font-family: 'Montserrat', sans-serif;
+      letter-spacing: 0.3px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- TRICOLOR TOPO -->
+<div class="topo-tricolor"><span></span><span></span><span></span></div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <img src="sedel.jpg" alt="Logo SEDEL" />
+  <div class="topbar-divider"></div>
+  <div class="topbar-info">
+    <h1>Painel Administrativo — Suporte TI</h1>
+    <p>Secretaria de Estado de Desporto e Lazer · SEDEL/AM</p>
+  </div>
+  <div class="topbar-spacer"></div>
+  <div class="topbar-admin">
+    <span>👤</span>
+    <span id="nomeAdmin">Administrador</span>
+  </div>
+  <button class="btn-sair" onclick="sair()">Sair</button>
+</div>
+
+<!-- ABAS -->
+<div class="nav-abas">
+  <div class="aba ativa" onclick="mudarAba('chamados-abertos')">📋 Chamados Abertos</div>
+  <div class="aba" onclick="mudarAba('historico')">📂 Histórico</div>
+  <div class="aba" onclick="mudarAba('relatorios')">📊 Relatórios</div>
+  <div class="aba" onclick="mudarAba('usuarios')">👥 Usuários</div>
+</div>
+
+<!-- CONTEÚDO -->
+<div class="conteudo">
+
+  <!-- ═══════════════ ABA: CHAMADOS ABERTOS ═══════════════ -->
+  <div class="secao ativa" id="secao-chamados-abertos">
+    <div class="metricas">
+      <div class="metrica-card">
+        <div class="metrica-label">Total Abertos</div>
+        <div class="metrica-valor" id="total-abertos">0</div>
+        <div class="metrica-sub">chamados pendentes</div>
+      </div>
+      <div class="metrica-card amarelo">
+        <div class="metrica-label">Em Andamento</div>
+        <div class="metrica-valor" id="total-andamento">0</div>
+        <div class="metrica-sub">em atendimento</div>
+      </div>
+      <div class="metrica-card vermelho">
+        <div class="metrica-label">Nível 3 (Crítico)</div>
+        <div class="metrica-valor" id="total-critico">0</div>
+        <div class="metrica-sub">requerem atenção imediata</div>
+      </div>
+      <div class="metrica-card verde">
+        <div class="metrica-label">Fechados Hoje</div>
+        <div class="metrica-valor" id="total-fechados-hoje">0</div>
+        <div class="metrica-sub">resolvidos no dia</div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-header">
+        <h2>Chamados Abertos</h2>
+        <input class="busca-input" type="text" placeholder="🔍 Buscar chamado..." oninput="filtrarTabela(this.value, 'tabela-abertos')" />
+        <select class="filtro-select" onchange="filtrarPorNivel(this.value)">
+          <option value="">Todos os níveis</option>
+          <option value="N0">N0 — Resolvido pelo bot</option>
+          <option value="N1">N1 — Suporte básico</option>
+          <option value="N2">N2 — Suporte avançado</option>
+          <option value="N3">N3 — Crítico</option>
+        </select>
+      </div>
+      <table id="tabela-abertos">
+        <thead>
+          <tr>
+            <th>Nº Chamado</th>
+            <th>Usuário</th>
+            <th>Categoria</th>
+            <th>Nível</th>
+            <th>Status</th>
+            <th>Data/Hora</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-abertos"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════ ABA: HISTÓRICO ═══════════════ -->
+  <div class="secao" id="secao-historico">
+    <div class="table-wrap">
+      <div class="table-header">
+        <h2>Histórico de Chamados</h2>
+        <input class="busca-input" type="text" placeholder="🔍 Buscar..." oninput="filtrarTabela(this.value, 'tabela-historico')" />
+        <select class="filtro-select" onchange="filtrarHistoricoStatus(this.value)">
+          <option value="">Todos os status</option>
+          <option value="Fechado">Fechado</option>
+          <option value="Aberto">Aberto</option>
+          <option value="Em Andamento">Em Andamento</option>
+        </select>
+      </div>
+      <table id="tabela-historico">
+        <thead>
+          <tr>
+            <th>Nº Chamado</th>
+            <th>Usuário</th>
+            <th>Categoria</th>
+            <th>Nível</th>
+            <th>Status</th>
+            <th>Data Abertura</th>
+            <th>Data Fechamento</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-historico"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════ ABA: RELATÓRIOS ═══════════════ -->
+  <div class="secao" id="secao-relatorios">
+    <div class="metricas">
+      <div class="metrica-card">
+        <div class="metrica-label">Total (mês)</div>
+        <div class="metrica-valor">24</div>
+        <div class="metrica-sub">chamados registrados</div>
+      </div>
+      <div class="metrica-card verde">
+        <div class="metrica-label">Taxa de Resolução</div>
+        <div class="metrica-valor">87%</div>
+        <div class="metrica-sub">resolvidos pelo bot (N0)</div>
+      </div>
+      <div class="metrica-card amarelo">
+        <div class="metrica-label">Tempo Médio</div>
+        <div class="metrica-valor">4h</div>
+        <div class="metrica-sub">para fechamento</div>
+      </div>
+    </div>
+
+    <div class="relatorio-cards">
+      <div class="relatorio-card">
+        <div class="relatorio-icone">📋</div>
+        <div class="relatorio-info">
+          <h3>Chamados por Categoria</h3>
+          <p>Distribuição de chamados agrupados por tipo de problema (rede, senha, hardware, etc.).</p>
+          <button class="btn-exportar" onclick="exportarCSV('categorias')">Exportar CSV</button>
+        </div>
+      </div>
+      <div class="relatorio-card">
+        <div class="relatorio-icone">📈</div>
+        <div class="relatorio-info">
+          <h3>Volume por Período</h3>
+          <p>Quantidade de chamados abertos por dia, semana ou mês para análise de tendências.</p>
+          <button class="btn-exportar" onclick="exportarCSV('periodo')">Exportar CSV</button>
+        </div>
+      </div>
+      <div class="relatorio-card">
+        <div class="relatorio-icone">⚡</div>
+        <div class="relatorio-info">
+          <h3>Eficiência do Bot</h3>
+          <p>Percentual de chamados resolvidos automaticamente (N0) versus escalados para técnico.</p>
+          <button class="btn-exportar" onclick="exportarCSV('eficiencia')">Exportar CSV</button>
+        </div>
+      </div>
+      <div class="relatorio-card">
+        <div class="relatorio-icone">👤</div>
+        <div class="relatorio-info">
+          <h3>Chamados por Usuário</h3>
+          <p>Listagem de usuários com maior volume de chamados abertos no período selecionado.</p>
+          <button class="btn-exportar" onclick="exportarCSV('usuarios')">Exportar CSV</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ ABA: USUÁRIOS ═══════════════ -->
+  <div class="secao" id="secao-usuarios">
+    <div class="form-usuario">
+      <h2>➕ Adicionar Técnico / Administrador</h2>
+      <div class="form-grid">
+        <div class="form-grupo">
+          <label>Nome Completo</label>
+          <input type="text" id="u-nome" placeholder="Ex.: João Silva" />
+        </div>
+        <div class="form-grupo">
+          <label>E-mail</label>
+          <input type="email" id="u-email" placeholder="joao.silva@sedel.am.gov.br" />
+        </div>
+        <div class="form-grupo">
+          <label>Perfil</label>
+          <select id="u-perfil">
+            <option value="tecnico">Técnico de TI</option>
+            <option value="admin">Administrador</option>
+          </select>
+        </div>
+        <div class="form-grupo">
+          <label>Senha Provisória</label>
+          <input type="password" id="u-senha" placeholder="••••••••" />
+        </div>
+      </div>
+      <div class="form-footer">
+        <button class="btn-primario" onclick="adicionarUsuario()">Salvar Usuário</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-header">
+        <h2>Usuários Cadastrados</h2>
+        <input class="busca-input" type="text" placeholder="🔍 Buscar usuário..." oninput="filtrarTabela(this.value, 'tabela-usuarios')" />
+      </div>
+      <table id="tabela-usuarios">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>E-mail</th>
+            <th>Perfil</th>
+            <th>Status</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-usuarios"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /conteudo -->
+
+<!-- MODAL DETALHES DO CHAMADO -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-titulo">Detalhes do Chamado</h3>
+      <button class="modal-fechar" onclick="fecharModal()">✕</button>
+    </div>
+    <div class="modal-tricolor"><span></span><span></span><span></span></div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-actions">
+      <button class="btn-secundario" onclick="fecharModal()">Fechar</button>
+      <button class="btn-primario" id="modal-btn-acao" onclick="fecharChamadoModal()">✔ Marcar como Resolvido</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- RODAPÉ -->
+<div class="footer">Secretaria de Estado de Desporto e Lazer — SEDEL · AM &nbsp;|&nbsp; Painel Administrativo v1.0</div>
+
+<script>
+  // ── DADOS FICTÍCIOS ──────────────────────────────────────────
+  const chamadosMock = [
+    { id: 'CH-2024-001', usuario: 'Maria Souza',   categoria: 'Acesso ao sistema', nivel: 'N1', status: 'Aberto',       abertura: '09/06/2024 08:15', fechamento: '—',               descricao: 'Usuária não consegue acessar o módulo de finanças após troca de senha.' },
+    { id: 'CH-2024-002', usuario: 'Carlos Lima',   categoria: 'Impressora',        nivel: 'N2', status: 'Em Andamento', abertura: '09/06/2024 09:30', fechamento: '—',               descricao: 'Impressora da sala 204 não aparece na rede após atualização do Windows.' },
+    { id: 'CH-2024-003', usuario: 'Ana Paula',     categoria: 'Senha',             nivel: 'N0', status: 'Fechado',      abertura: '08/06/2024 14:00', fechamento: '08/06/2024 14:05',descricao: 'Solicitação de reset de senha — resolvido pelo bot automaticamente.' },
+    { id: 'CH-2024-004', usuario: 'Rui Barbosa',   categoria: 'Rede / Internet',   nivel: 'N3', status: 'Aberto',       abertura: '09/06/2024 10:45', fechamento: '—',               descricao: 'Setor de TI completamente sem acesso à internet. Afeta 12 estações.' },
+    { id: 'CH-2024-005', usuario: 'Lucia Ferreira',categoria: 'Hardware',          nivel: 'N2', status: 'Em Andamento', abertura: '08/06/2024 16:20', fechamento: '—',               descricao: 'Computador não liga após queda de energia. Suspeita de fonte queimada.' },
+    { id: 'CH-2024-006', usuario: 'Pedro Nunes',   categoria: 'E-mail',            nivel: 'N1', status: 'Fechado',      abertura: '07/06/2024 11:00', fechamento: '07/06/2024 13:30',descricao: 'Não recebia e-mails corporativos. Configuração de filtro corrigida.' },
+    { id: 'CH-2024-007', usuario: 'Juliana Costa', categoria: 'VPN',               nivel: 'N2', status: 'Aberto',       abertura: '09/06/2024 11:00', fechamento: '—',               descricao: 'VPN não conecta ao trabalhar remotamente. Erro de certificado.' },
+  ];
+
+  const usuariosMock = [
+    { nome: 'Admin SEDEL',    email: 'admin@sedel.am.gov.br',  perfil: 'Administrador', status: 'Ativo' },
+    { nome: 'Técnico Rafael', email: 'rafael.ti@sedel.am.gov.br', perfil: 'Técnico de TI', status: 'Ativo' },
+    { nome: 'Técnico Marcos', email: 'marcos.ti@sedel.am.gov.br', perfil: 'Técnico de TI', status: 'Inativo' },
+  ];
+
+  let chamadosData = [...chamadosMock];
+  let usuariosData = [...usuariosMock];
+  let chamadoAtualId = null;
+
+  // ── INICIALIZAÇÃO ────────────────────────────────────────────
+  window.onload = () => {
+    renderizarMetricas();
+    renderizarTabelaAbertos();
+    renderizarTabelaHistorico();
+    renderizarTabelaUsuarios();
+  };
+
+  // ── MÉTRICAS ─────────────────────────────────────────────────
+  function renderizarMetricas() {
+    const abertos     = chamadosData.filter(c => c.status === 'Aberto').length;
+    const andamento   = chamadosData.filter(c => c.status === 'Em Andamento').length;
+    const criticos    = chamadosData.filter(c => c.nivel === 'N3' && c.status !== 'Fechado').length;
+    const fechHoje    = chamadosData.filter(c => c.status === 'Fechado' && c.fechamento.startsWith('09/06')).length;
+    document.getElementById('total-abertos').textContent    = abertos;
+    document.getElementById('total-andamento').textContent  = andamento;
+    document.getElementById('total-critico').textContent    = criticos;
+    document.getElementById('total-fechados-hoje').textContent = fechHoje;
+  }
+
+  // ── TABELA ABERTOS ───────────────────────────────────────────
+  function renderizarTabelaAbertos(dados) {
+    const lista = dados || chamadosData.filter(c => c.status !== 'Fechado');
+    const tbody = document.getElementById('tbody-abertos');
+    tbody.innerHTML = lista.map(c => `
+      <tr>
+        <td><strong>${c.id}</strong></td>
+        <td>${c.usuario}</td>
+        <td>${c.categoria}</td>
+        <td><span class="badge badge-${c.nivel.toLowerCase()}">${c.nivel}</span></td>
+        <td><span class="badge ${c.status === 'Aberto' ? 'badge-aberto' : 'badge-andamento'}">${c.status}</span></td>
+        <td>${c.abertura}</td>
+        <td>
+          <button class="btn-acao btn-ver" onclick="verChamado('${c.id}')">Ver</button>
+          <button class="btn-acao btn-fechar" onclick="fecharChamado('${c.id}')">Resolver</button>
+        </td>
+      </tr>
+    `).join('') || '<tr><td colspan="7" style="text-align:center;color:#8896aa;padding:20px">Nenhum chamado encontrado.</td></tr>';
+  }
+
+  // ── TABELA HISTÓRICO ─────────────────────────────────────────
+  function renderizarTabelaHistorico(dados) {
+    const lista = dados || chamadosData;
+    const tbody = document.getElementById('tbody-historico');
+    tbody.innerHTML = lista.map(c => `
+      <tr>
+        <td><strong>${c.id}</strong></td>
+        <td>${c.usuario}</td>
+        <td>${c.categoria}</td>
+        <td><span class="badge badge-${c.nivel.toLowerCase()}">${c.nivel}</span></td>
+        <td><span class="badge ${c.status === 'Fechado' ? 'badge-fechado' : c.status === 'Aberto' ? 'badge-aberto' : 'badge-andamento'}">${c.status}</span></td>
+        <td>${c.abertura}</td>
+        <td>${c.fechamento}</td>
+        <td>
+          <button class="btn-acao btn-ver" onclick="verChamado('${c.id}')">Ver</button>
+        </td>
+      </tr>
+    `).join('') || '<tr><td colspan="8" style="text-align:center;color:#8896aa;padding:20px">Nenhum chamado.</td></tr>';
+  }
+
+  // ── TABELA USUÁRIOS ──────────────────────────────────────────
+  function renderizarTabelaUsuarios(dados) {
+    const lista = dados || usuariosData;
+    const tbody = document.getElementById('tbody-usuarios');
+    tbody.innerHTML = lista.map((u, i) => `
+      <tr>
+        <td><strong>${u.nome}</strong></td>
+        <td>${u.email}</td>
+        <td>${u.perfil}</td>
+        <td><span class="badge ${u.status === 'Ativo' ? 'badge-fechado' : 'badge-andamento'}">${u.status}</span></td>
+        <td>
+          <button class="btn-acao btn-editar" onclick="toggleStatusUsuario(${i})">
+            ${u.status === 'Ativo' ? 'Desativar' : 'Ativar'}
+          </button>
+          <button class="btn-acao btn-excluir" onclick="excluirUsuario(${i})">Excluir</button>
+        </td>
+      </tr>
+    `).join('') || '<tr><td colspan="5" style="text-align:center;color:#8896aa;padding:20px">Nenhum usuário.</td></tr>';
+  }
+
+  // ── MODAL ────────────────────────────────────────────────────
+  function verChamado(id) {
+    const c = chamadosData.find(x => x.id === id);
+    if (!c) return;
+    chamadoAtualId = id;
+    document.getElementById('modal-titulo').textContent = `Chamado ${c.id}`;
+    const btnAcao = document.getElementById('modal-btn-acao');
+    btnAcao.style.display = c.status === 'Fechado' ? 'none' : 'inline-block';
+
+    document.getElementById('modal-body').innerHTML = `
+      <div class="detalhe-linha">
+        <span class="detalhe-label">Usuário</span>
+        <span class="detalhe-valor">${c.usuario}</span>
+      </div>
+      <div class="detalhe-linha">
+        <span class="detalhe-label">Categoria</span>
+        <span class="detalhe-valor">${c.categoria}</span>
+      </div>
+      <div class="detalhe-linha">
+        <span class="detalhe-label">Nível</span>
+        <span class="detalhe-valor"><span class="badge badge-${c.nivel.toLowerCase()}">${c.nivel}</span></span>
+      </div>
+      <div class="detalhe-linha">
+        <span class="detalhe-label">Status</span>
+        <span class="detalhe-valor"><span class="badge ${c.status === 'Fechado' ? 'badge-fechado' : c.status === 'Aberto' ? 'badge-aberto' : 'badge-andamento'}">${c.status}</span></span>
+      </div>
+      <div class="detalhe-linha">
+        <span class="detalhe-label">Abertura</span>
+        <span class="detalhe-valor">${c.abertura}</span>
+      </div>
+      <div class="detalhe-linha">
+        <span class="detalhe-label">Descrição</span>
+        <span class="detalhe-valor">${c.descricao}</span>
+      </div>
+      ${c.status !== 'Fechado' ? `
+      <textarea class="resposta-area" id="resposta-tecnico" placeholder="Registre a resposta ou solução aplicada..."></textarea>
+      ` : ''}
+    `;
+    document.getElementById('modalOverlay').classList.add('aberto');
+  }
+
+  function fecharModal() {
+    document.getElementById('modalOverlay').classList.remove('aberto');
+    chamadoAtualId = null;
+  }
+
+  function fecharChamadoModal() {
+    if (!chamadoAtualId) return;
+    fecharChamado(chamadoAtualId);
+    fecharModal();
+  }
+
+  // ── AÇÕES ────────────────────────────────────────────────────
+  function fecharChamado(id) {
+    const c = chamadosData.find(x => x.id === id);
+    if (!c) return;
+    const agora = new Date();
+    c.status = 'Fechado';
+    c.fechamento = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    renderizarMetricas();
+    renderizarTabelaAbertos();
+    renderizarTabelaHistorico();
+    mostrarToast('✔ Chamado ' + id + ' marcado como resolvido.', 'sucesso');
+  }
+
+  function filtrarTabela(valor, tabelaId) {
+    const tabela = document.getElementById(tabelaId);
+    const linhas = tabela.querySelectorAll('tbody tr');
+    const v = valor.toLowerCase();
+    linhas.forEach(tr => {
+      tr.style.display = tr.textContent.toLowerCase().includes(v) ? '' : 'none';
+    });
+  }
+
+  function filtrarPorNivel(nivel) {
+    if (!nivel) { renderizarTabelaAbertos(); return; }
+    const lista = chamadosData.filter(c => c.nivel === nivel && c.status !== 'Fechado');
+    renderizarTabelaAbertos(lista);
+  }
+
+  function filtrarHistoricoStatus(status) {
+    if (!status) { renderizarTabelaHistorico(); return; }
+    renderizarTabelaHistorico(chamadosData.filter(c => c.status === status));
+  }
+
+  function adicionarUsuario() {
+    const nome  = document.getElementById('u-nome').value.trim();
+    const email = document.getElementById('u-email').value.trim();
+    const perfil= document.getElementById('u-perfil').value;
+    if (!nome || !email) { mostrarToast('Preencha nome e e-mail.'); return; }
+    usuariosData.push({ nome, email, perfil: perfil === 'admin' ? 'Administrador' : 'Técnico de TI', status: 'Ativo' });
+    document.getElementById('u-nome').value = '';
+    document.getElementById('u-email').value = '';
+    document.getElementById('u-senha').value = '';
+    renderizarTabelaUsuarios();
+    mostrarToast('✔ Usuário adicionado com sucesso.', 'sucesso');
+  }
+
+  function toggleStatusUsuario(i) {
+    usuariosData[i].status = usuariosData[i].status === 'Ativo' ? 'Inativo' : 'Ativo';
+    renderizarTabelaUsuarios();
+  }
+
+  function excluirUsuario(i) {
+    if (!confirm('Excluir este usuário?')) return;
+    usuariosData.splice(i, 1);
+    renderizarTabelaUsuarios();
+    mostrarToast('Usuário removido.');
+  }
+
+  function exportarCSV(tipo) {
+    mostrarToast('📥 Exportando relatório de ' + tipo + '...', 'sucesso');
+  }
+
+  function sair() {
+    if (confirm('Deseja sair do painel?')) {
+      window.location.href = 'index.html';
+    }
+  }
+
+  // ── ABAS ─────────────────────────────────────────────────────
+  function mudarAba(id) {
+    document.querySelectorAll('.secao').forEach(s => s.classList.remove('ativa'));
+    document.querySelectorAll('.aba').forEach(a => a.classList.remove('ativa'));
+    document.getElementById('secao-' + id).classList.add('ativa');
+    event.target.classList.add('ativa');
+  }
+
+  // ── TOAST ────────────────────────────────────────────────────
+  function mostrarToast(msg, tipo) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast visivel' + (tipo === 'sucesso' ? ' sucesso' : '');
+    setTimeout(() => { t.className = 'toast'; }, 3000);
+  }
+</script>
+</body>
+</html>
