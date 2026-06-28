@@ -261,7 +261,7 @@ app.get('/api/chamados/exportar', (req, res) => {
   });
 });
 
-// ─── ROTA DE RESET DE SESSÃO ────────────────────────────────────────────────
+//  ROTA DE RESET DE SESSÃO
 app.post('/api/reset', (req, res) => {
   const { sessionId } = req.body;
   delete sessoes[sessionId];
