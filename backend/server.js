@@ -32,7 +32,7 @@ db.run(`
   )
 `);
 
-// ─── DEFINIÇÃO DOS NÍVEIS DE SUPORTE E PALAVRAS-CHAVE ────────────────────────
+// ─── DEFINIÇÃO DOS NÍVEIS DE SUPORTE E PALAVRAS-CHAVE
 const niveisSuporteConfig = {
   N1: {
     nome: 'Suporte Nível 1',
