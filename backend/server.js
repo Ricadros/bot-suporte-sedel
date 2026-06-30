@@ -58,7 +58,7 @@ db.run(`
   )
 `);
 
-// ─── DEFINIÇÃO DOS NÍVEIS DE SUPORTE E PALAVRAS-CHAVE ────────────────────────
+// ─── DEFINIÇÃO DOS NÍVEIS DE SUPORTE E PALAVRAS-CHAVE
 const niveisSuporteConfig = {
   N1: {
     nome: 'Suporte Nível 1',
@@ -287,7 +287,7 @@ app.get('/api/chamados/exportar', (req, res) => {
   });
 });
 
-// ─── ROTA DE RESET DE SESSÃO ────────────────────────────────────────────────
+//  ROTA DE RESET DE SESSÃO
 app.post('/api/reset', (req, res) => {
   const { sessionId } = req.body;
   delete sessoes[sessionId];
