@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <link rel="icon" type="image/jpeg" href="sedel.jpg" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login — SEDEL TI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Open+Sans:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --azul-escuro: #1a4fa0;
+      --azul-medio: #1e6cc8;
+      --azul-claro: #0080c8;
+      --verde: #009b3a;
+      --amarelo: #ffcc00;
+      --cinza-fundo: #f2f5fa;
+      --cinza-borda: #dde3ee;
+      --cinza-texto: #4a5568;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Open Sans', sans-serif;
+      background: var(--cinza-fundo);
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .login-container {
+      background: #ffffff;
+      width: 100%;
+      max-width: 400px;
+      border-radius: 12px;
+      box-shadow: 0 8px 30px rgba(26, 79, 160, 0.12);
+      overflow: hidden;
+    }
+
+    .login-header {
+      background: var(--azul-escuro);
+      padding: 30px 20px;
+      text-align: center;
+    }
+
+    .login-header img {
+      height: 60px;
+      border-radius: 8px;
+      background: #fff;
+      padding: 5px;
+      margin-bottom: 12px;
+    }
+
+    .login-header h1 {
+      font-family: 'Montserrat', sans-serif;
+      color: #fff;
+      font-size: 18px;
+    }
+
+    .topo-tricolor { display: flex; height: 4px; }
+    .topo-tricolor span:nth-child(1) { background: var(--verde); flex: 1; }
+    .topo-tricolor span:nth-child(2) { background: var(--amarelo); flex: 1; }
+    .topo-tricolor span:nth-child(3) { background: var(--azul-claro); flex: 1; }
+
+    .login-body {
+      padding: 30px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-group label {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--cinza-texto);
+      margin-bottom: 6px;
+    }
+
+    .form-group input {
+      border: 1.5px solid var(--cinza-borda);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-family: 'Open Sans', sans-serif;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-group input:focus {
+      border-color: var(--azul-medio);
+    }
+
+    .btn-entrar {
+      width: 100%;
+      background: var(--azul-escuro);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 12px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 10px;
+    }
+
+    .btn-entrar:hover {
+      background: var(--azul-medio);
+    }
+
+    .erro-msg {
+      color: #dc2626;
+      font-size: 12px;
+      text-align: center;
+      margin-bottom: 15px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="login-container">
+    <div class="login-header">
+      <img src="sedel.jpg" alt="Logo SEDEL" />
+      <h1>Acesso Administrativo</h1>
+    </div>
+    <div class="topo-tricolor"><span></span><span></span><span></span></div>
+    
+    <div class="login-body">
+      <div class="erro-msg" id="mensagem-erro">E-mail ou senha incorretos.</div>
+      
+      <form id="formLogin">
+        <div class="form-group">
+          <label>E-mail Corporativo</label>
+          <input type="email" id="email" placeholder="admin@sedel.am.gov.br" required />
+        </div>
+        <div class="form-group">
+          <label>Senha</label>
+          <input type="password" id="senha" placeholder="••••••••" required />
+        </div>
+        <button type="submit" class="btn-entrar">Entrar no Painel</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('formLogin').addEventListener('submit', async (e) => {
+      e.preventDefault(); // Impede a página de recarregar
+      
+      const email = document.getElementById('email').value;
+      const senha = document.getElementById('senha').value;
+      const erroMsg = document.getElementById('mensagem-erro');
+      
+      try {
+        const resposta = await fetch('http://localhost:3000/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, senha })
+        });
+
+        const dados = await resposta.json();
+
+        if (resposta.ok && dados.sucesso) {
+          // Salva um "token" no navegador para provar que está logado
+          localStorage.setItem('sedel_token', 'autenticado');
+          window.location.href = 'adms.html'; // Redireciona para o painel
+        } else {
+          erroMsg.style.display = 'block';
+        }
+      } catch (error) {
+        erroMsg.textContent = 'Erro ao conectar com o servidor.';
+        erroMsg.style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>

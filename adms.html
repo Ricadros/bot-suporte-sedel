@@ -719,43 +719,72 @@
 
 <!-- RODAPÉ -->
 <div class="footer">Secretaria de Estado de Desporto e Lazer — SEDEL · AM &nbsp;|&nbsp; Painel Administrativo v1.0</div>
-
+  
 <script>
-  // ── DADOS FICTÍCIOS ──────────────────────────────────────────
-  const chamadosMock = [
-    { id: 'CH-2024-001', usuario: 'Maria Souza',   categoria: 'Acesso ao sistema', nivel: 'N1', status: 'Aberto',       abertura: '09/06/2024 08:15', fechamento: '—',               descricao: 'Usuária não consegue acessar o módulo de finanças após troca de senha.' },
-    { id: 'CH-2024-002', usuario: 'Carlos Lima',   categoria: 'Impressora',        nivel: 'N2', status: 'Em Andamento', abertura: '09/06/2024 09:30', fechamento: '—',               descricao: 'Impressora da sala 204 não aparece na rede após atualização do Windows.' },
-    { id: 'CH-2024-003', usuario: 'Ana Paula',     categoria: 'Senha',             nivel: 'N0', status: 'Fechado',      abertura: '08/06/2024 14:00', fechamento: '08/06/2024 14:05',descricao: 'Solicitação de reset de senha — resolvido pelo bot automaticamente.' },
-    { id: 'CH-2024-004', usuario: 'Rui Barbosa',   categoria: 'Rede / Internet',   nivel: 'N3', status: 'Aberto',       abertura: '09/06/2024 10:45', fechamento: '—',               descricao: 'Setor de TI completamente sem acesso à internet. Afeta 12 estações.' },
-    { id: 'CH-2024-005', usuario: 'Lucia Ferreira',categoria: 'Hardware',          nivel: 'N2', status: 'Em Andamento', abertura: '08/06/2024 16:20', fechamento: '—',               descricao: 'Computador não liga após queda de energia. Suspeita de fonte queimada.' },
-    { id: 'CH-2024-006', usuario: 'Pedro Nunes',   categoria: 'E-mail',            nivel: 'N1', status: 'Fechado',      abertura: '07/06/2024 11:00', fechamento: '07/06/2024 13:30',descricao: 'Não recebia e-mails corporativos. Configuração de filtro corrigida.' },
-    { id: 'CH-2024-007', usuario: 'Juliana Costa', categoria: 'VPN',               nivel: 'N2', status: 'Aberto',       abertura: '09/06/2024 11:00', fechamento: '—',               descricao: 'VPN não conecta ao trabalhar remotamente. Erro de certificado.' },
-  ];
-
-  const usuariosMock = [
-    { nome: 'Admin SEDEL',    email: 'admin@sedel.am.gov.br',  perfil: 'Administrador', status: 'Ativo' },
-    { nome: 'Técnico Rafael', email: 'rafael.ti@sedel.am.gov.br', perfil: 'Técnico de TI', status: 'Ativo' },
-    { nome: 'Técnico Marcos', email: 'marcos.ti@sedel.am.gov.br', perfil: 'Técnico de TI', status: 'Inativo' },
-  ];
-
-  let chamadosData = [...chamadosMock];
-  let usuariosData = [...usuariosMock];
+  // ── DADOS ────────────────────────────────────────────────────
+  let chamadosData = [];
+  let usuariosData = []; // Inicialmente vazio (pode ser integrado ao banco no futuro)
   let chamadoAtualId = null;
+
+  // ── VERIFICAÇÃO DE SEGURANÇA (LOGIN) ──────────────────────────
+  if (!localStorage.getItem('sedel_token')) {
+    // Se não tiver o token de acesso, expulsa de volta para o login
+    window.location.href = 'login.html';
+  }
 
   // ── INICIALIZAÇÃO ────────────────────────────────────────────
   window.onload = () => {
-    renderizarMetricas();
-    renderizarTabelaAbertos();
-    renderizarTabelaHistorico();
+    carregarChamadosDoBanco();
     renderizarTabelaUsuarios();
   };
 
+  // ── CONEXÃO COM O BACKEND (API) ──────────────────────────────
+  async function carregarChamadosDoBanco() {
+    try {
+      const resposta = await fetch('http://localhost:3000/api/chamados');
+      if (!resposta.ok) throw new Error('Falha na conexão com a API');
+      
+      const dadosBanco = await resposta.json();
+      
+      // Mapeia os dados do SQLite para o formato que a interface espera
+      chamadosData = dadosBanco.map(c => {
+        // O banco salva "Suporte Nível 1", a interface precisa de "N1"
+        let nivelFormatado = 'N1';
+        if (c.nivel && c.nivel.includes('2')) nivelFormatado = 'N2';
+        if (c.nivel && c.nivel.includes('3')) nivelFormatado = 'N3';
+
+        return {
+          id: c.numero,
+          usuario: c.solicitante,
+          categoria: c.setor,
+          nivel: nivelFormatado,
+          status: c.status, // O bot salva como 'Pendente' por padrão
+          abertura: c.data_abertura,
+          fechamento: '—',
+          descricao: c.descricao
+        };
+      });
+
+      // Atualiza a tela com os dados reais
+      renderizarMetricas();
+      renderizarTabelaAbertos();
+      renderizarTabelaHistorico();
+      
+    } catch (erro) {
+      console.error('Erro ao buscar chamados:', erro);
+      mostrarToast('Erro ao conectar com o servidor. O backend está rodando?', 'erro');
+    }
+  }
+
   // ── MÉTRICAS ─────────────────────────────────────────────────
   function renderizarMetricas() {
-    const abertos     = chamadosData.filter(c => c.status === 'Aberto').length;
+    const abertos     = chamadosData.filter(c => c.status === 'Pendente' || c.status === 'Aberto').length;
     const andamento   = chamadosData.filter(c => c.status === 'Em Andamento').length;
     const criticos    = chamadosData.filter(c => c.nivel === 'N3' && c.status !== 'Fechado').length;
-    const fechHoje    = chamadosData.filter(c => c.status === 'Fechado' && c.fechamento.startsWith('09/06')).length;
+    
+    const dataHoje = new Date().toLocaleDateString('pt-BR');
+    const fechHoje    = chamadosData.filter(c => c.status === 'Fechado' && c.fechamento.includes(dataHoje)).length;
+    
     document.getElementById('total-abertos').textContent    = abertos;
     document.getElementById('total-andamento').textContent  = andamento;
     document.getElementById('total-critico').textContent    = criticos;
@@ -772,14 +801,14 @@
         <td>${c.usuario}</td>
         <td>${c.categoria}</td>
         <td><span class="badge badge-${c.nivel.toLowerCase()}">${c.nivel}</span></td>
-        <td><span class="badge ${c.status === 'Aberto' ? 'badge-aberto' : 'badge-andamento'}">${c.status}</span></td>
+        <td><span class="badge ${c.status === 'Pendente' || c.status === 'Aberto' ? 'badge-aberto' : 'badge-andamento'}">${c.status}</span></td>
         <td>${c.abertura}</td>
         <td>
           <button class="btn-acao btn-ver" onclick="verChamado('${c.id}')">Ver</button>
           <button class="btn-acao btn-fechar" onclick="fecharChamado('${c.id}')">Resolver</button>
         </td>
       </tr>
-    `).join('') || '<tr><td colspan="7" style="text-align:center;color:#8896aa;padding:20px">Nenhum chamado encontrado.</td></tr>';
+    `).join('') || '<tr><td colspan="7" style="text-align:center;color:#8896aa;padding:20px">Nenhum chamado pendente encontrado.</td></tr>';
   }
 
   // ── TABELA HISTÓRICO ─────────────────────────────────────────
@@ -792,14 +821,14 @@
         <td>${c.usuario}</td>
         <td>${c.categoria}</td>
         <td><span class="badge badge-${c.nivel.toLowerCase()}">${c.nivel}</span></td>
-        <td><span class="badge ${c.status === 'Fechado' ? 'badge-fechado' : c.status === 'Aberto' ? 'badge-aberto' : 'badge-andamento'}">${c.status}</span></td>
+        <td><span class="badge ${c.status === 'Fechado' ? 'badge-fechado' : (c.status === 'Pendente' || c.status === 'Aberto') ? 'badge-aberto' : 'badge-andamento'}">${c.status}</span></td>
         <td>${c.abertura}</td>
         <td>${c.fechamento}</td>
         <td>
           <button class="btn-acao btn-ver" onclick="verChamado('${c.id}')">Ver</button>
         </td>
       </tr>
-    `).join('') || '<tr><td colspan="8" style="text-align:center;color:#8896aa;padding:20px">Nenhum chamado.</td></tr>';
+    `).join('') || '<tr><td colspan="8" style="text-align:center;color:#8896aa;padding:20px">Nenhum chamado registrado.</td></tr>';
   }
 
   // ── TABELA USUÁRIOS ──────────────────────────────────────────
@@ -819,7 +848,7 @@
           <button class="btn-acao btn-excluir" onclick="excluirUsuario(${i})">Excluir</button>
         </td>
       </tr>
-    `).join('') || '<tr><td colspan="5" style="text-align:center;color:#8896aa;padding:20px">Nenhum usuário.</td></tr>';
+    `).join('') || '<tr><td colspan="5" style="text-align:center;color:#8896aa;padding:20px">Nenhum usuário cadastrado.</td></tr>';
   }
 
   // ── MODAL ────────────────────────────────────────────────────
@@ -831,13 +860,15 @@
     const btnAcao = document.getElementById('modal-btn-acao');
     btnAcao.style.display = c.status === 'Fechado' ? 'none' : 'inline-block';
 
+    const statusBadge = c.status === 'Fechado' ? 'badge-fechado' : (c.status === 'Pendente' || c.status === 'Aberto') ? 'badge-aberto' : 'badge-andamento';
+
     document.getElementById('modal-body').innerHTML = `
       <div class="detalhe-linha">
-        <span class="detalhe-label">Usuário</span>
+        <span class="detalhe-label">Solicitante</span>
         <span class="detalhe-valor">${c.usuario}</span>
       </div>
       <div class="detalhe-linha">
-        <span class="detalhe-label">Categoria</span>
+        <span class="detalhe-label">Setor</span>
         <span class="detalhe-valor">${c.categoria}</span>
       </div>
       <div class="detalhe-linha">
@@ -846,7 +877,7 @@
       </div>
       <div class="detalhe-linha">
         <span class="detalhe-label">Status</span>
-        <span class="detalhe-valor"><span class="badge ${c.status === 'Fechado' ? 'badge-fechado' : c.status === 'Aberto' ? 'badge-aberto' : 'badge-andamento'}">${c.status}</span></span>
+        <span class="detalhe-valor"><span class="badge ${statusBadge}">${c.status}</span></span>
       </div>
       <div class="detalhe-linha">
         <span class="detalhe-label">Abertura</span>
@@ -854,7 +885,7 @@
       </div>
       <div class="detalhe-linha">
         <span class="detalhe-label">Descrição</span>
-        <span class="detalhe-valor">${c.descricao}</span>
+        <span class="detalhe-valor" style="white-space: pre-wrap;">${c.descricao}</span>
       </div>
       ${c.status !== 'Fechado' ? `
       <textarea class="resposta-area" id="resposta-tecnico" placeholder="Registre a resposta ou solução aplicada..."></textarea>
@@ -878,6 +909,11 @@
   function fecharChamado(id) {
     const c = chamadosData.find(x => x.id === id);
     if (!c) return;
+    
+    // NOTA: Futuramente, você precisará criar uma rota PUT/PATCH no backend 
+    // para atualizar esse status permanentemente no banco SQLite.
+    // Por enquanto, ele apenas atualiza o visual da tela até o próximo F5.
+    
     const agora = new Date();
     c.status = 'Fechado';
     c.fechamento = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -903,8 +939,10 @@
   }
 
   function filtrarHistoricoStatus(status) {
+    // Como agora usamos "Pendente", ajustamos o filtro para capturá-lo caso o usuário busque "Aberto"
     if (!status) { renderizarTabelaHistorico(); return; }
-    renderizarTabelaHistorico(chamadosData.filter(c => c.status === status));
+    const statusBusca = status === 'Aberto' ? 'Pendente' : status; 
+    renderizarTabelaHistorico(chamadosData.filter(c => c.status === statusBusca || c.status === status));
   }
 
   function adicionarUsuario() {
@@ -933,12 +971,18 @@
   }
 
   function exportarCSV(tipo) {
-    mostrarToast('📥 Exportando relatório de ' + tipo + '...', 'sucesso');
+    if(tipo === 'categorias' || tipo === 'periodo') {
+      window.location.href = 'http://localhost:3000/api/chamados/exportar';
+      mostrarToast('📥 Baixando relatório geral em CSV...', 'sucesso');
+    } else {
+      mostrarToast('📥 Exportando relatório de ' + tipo + '...', 'sucesso');
+    }
   }
 
   function sair() {
     if (confirm('Deseja sair do painel?')) {
-      window.location.href = 'index.html';
+      localStorage.removeItem('sedel_token'); // Apaga a chave de acesso
+      window.location.href = 'login.html';
     }
   }
 

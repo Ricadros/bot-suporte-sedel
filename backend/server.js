@@ -17,6 +17,32 @@ const db = new sqlite3.Database('./chamados.db', (err) => {
   }
 });
 
+// ─── ROTA PARA LISTAR CHAMADOS NO PAINEL ADM ─────────────────────────
+app.get('/api/chamados', (req, res) => {
+  db.all(`SELECT * FROM chamados ORDER BY id DESC`, [], (err, rows) => {
+    if (err) {
+      return res.status(500).json({ erro: err.message });
+    }
+    // Retorna os dados do banco em formato JSON
+    res.json(rows);
+  });
+});
+
+// ─── ROTA DE AUTENTICAÇÃO (LOGIN) ──────────────────────────────────────────
+app.post('/api/login', (req, res) => {
+  const { email, senha } = req.body;
+
+  // Usuário padrão para acesso (no futuro, pode ser verificado no banco SQLite)
+  const EMAIL_ADMIN = 'admin@sedel.am.gov.br';
+  const SENHA_ADMIN = 'admin123';
+
+  if (email === EMAIL_ADMIN && senha === SENHA_ADMIN) {
+    res.json({ sucesso: true, mensagem: 'Login aprovado' });
+  } else {
+    res.status(401).json({ sucesso: false, erro: 'Credenciais inválidas' });
+  }
+});
+
 // Cria a estrutura correta com todas as colunas necessárias para o relatório
 db.run(`
   CREATE TABLE IF NOT EXISTS chamados (
