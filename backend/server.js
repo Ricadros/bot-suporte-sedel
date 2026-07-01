@@ -31,16 +31,22 @@ app.get('/api/chamados', (req, res) => {
 // ─── ROTA DE AUTENTICAÇÃO (LOGIN) ──────────────────────────────────────────
 app.post('/api/login', (req, res) => {
   const { email, senha } = req.body;
+  console.log('Dados recebidos:', email, senha); // Verifique se chegam aqui
 
-  // Usuário padrão para acesso (no futuro, pode ser verificado no banco SQLite)
-  const EMAIL_ADMIN = 'admin@sedel.am.gov.br';
-  const SENHA_ADMIN = 'admin123';
-
-  if (email === EMAIL_ADMIN && senha === SENHA_ADMIN) {
-    res.json({ sucesso: true, mensagem: 'Login aprovado' });
-  } else {
-    res.status(401).json({ sucesso: false, erro: 'Credenciais inválidas' });
-  }
+  const sql = `SELECT * FROM usuarios WHERE email = ? AND senha = ?`;
+  
+  db.get(sql, [email, senha], (err, row) => {
+    if (err) {
+      console.error('ERRO NO BANCO DE DADOS:', err); // ISSO VAI APARECER NO TERMINAL
+      return res.status(500).json({ sucesso: false, erro: err.message });
+    }
+    
+    if (row) {
+      res.json({ sucesso: true });
+    } else {
+      res.status(401).json({ sucesso: false, erro: 'Credenciais inválidas' });
+    }
+  });
 });
 
 // Cria a estrutura correta com todas as colunas necessárias para o relatório
