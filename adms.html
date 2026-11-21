@@ -858,8 +858,12 @@
     }, 3000);
   }
 
+  function isFechado(status) {
+    return status === 'Fechado' || status === 'Resolvido';
+  }
+
   function statusClass(status) {
-    if (status === 'Fechado') return 'tag-fechado';
+    if (isFechado(status)) return 'tag-fechado';
     if (status === 'Em Andamento') return 'tag-andamento';
     return 'tag-aberto';
   }
@@ -876,6 +880,7 @@
         if (row.nivel && row.nivel.includes('3')) nivel = 'N3';
 
         return {
+          dbId: row.id,
           id: row.numero,
           solicitante: row.solicitante,
           setor: row.setor,
@@ -897,9 +902,9 @@
   function renderMetrics() {
     const abertos = state.chamados.filter((c) => c.status === 'Pendente' || c.status === 'Aberto').length;
     const andamento = state.chamados.filter((c) => c.status === 'Em Andamento').length;
-    const criticos = state.chamados.filter((c) => c.nivel === 'N3' && c.status !== 'Fechado').length;
+    const criticos = state.chamados.filter((c) => c.nivel === 'N3' && !isFechado(c.status)).length;
     const hoje = new Date().toLocaleDateString('pt-BR');
-    const fechadosHoje = state.chamados.filter((c) => c.status === 'Fechado' && c.fechamento.includes(hoje)).length;
+    const fechadosHoje = state.chamados.filter((c) => isFechado(c.status) && c.fechamento.includes(hoje)).length;
 
     document.getElementById('metricAbertos').textContent = abertos;
     document.getElementById('metricAndamento').textContent = andamento;
@@ -907,7 +912,7 @@
     document.getElementById('metricFechadosHoje').textContent = fechadosHoje;
 
     const total = state.chamados.length;
-    const resolvidos = state.chamados.filter((c) => c.status === 'Fechado').length;
+    const resolvidos = state.chamados.filter((c) => isFechado(c.status)).length;
     const taxa = total > 0 ? Math.round((resolvidos / total) * 100) : 0;
 
     document.getElementById('repTotal').textContent = total;
@@ -920,7 +925,7 @@
     const nivel = document.getElementById('filterNivel').value;
 
     const lista = state.chamados.filter((c) => {
-      if (c.status === 'Fechado') return false;
+      if (isFechado(c.status)) return false;
       if (nivel && c.nivel !== nivel) return false;
       if (query) {
         const hay = `${c.id} ${c.solicitante} ${c.setor} ${c.descricao}`.toLowerCase();
@@ -958,7 +963,10 @@
     const status = document.getElementById('filterStatus').value;
 
     const lista = state.chamados.filter((c) => {
-      if (status && c.status !== status) return false;
+      if (status) {
+        if (status === 'Fechado' && !isFechado(c.status)) return false;
+        if (status !== 'Fechado' && c.status !== status) return false;
+      }
       if (query) {
         const hay = `${c.id} ${c.solicitante} ${c.setor} ${c.descricao}`.toLowerCase();
         if (!hay.includes(query)) return false;
@@ -1032,7 +1040,7 @@
 
     state.selectedId = id;
     document.getElementById('modalTitle').textContent = `Chamado ${c.id}`;
-    document.getElementById('btnResolveModal').style.display = c.status === 'Fechado' ? 'none' : 'inline-flex';
+    document.getElementById('btnResolveModal').style.display = isFechado(c.status) ? 'none' : 'inline-flex';
 
     document.getElementById('modalBody').innerHTML = `
       <div class="detail-row">
@@ -1059,7 +1067,7 @@
         <span class="detail-label">Descrição</span>
         <span class="detail-value">${escapeHtml(c.descricao)}</span>
       </div>
-      ${c.status !== 'Fechado' ? '<textarea class="notes-input" id="notesInput" placeholder="Observações ou solução aplicada..."></textarea>' : ''}
+      ${!isFechado(c.status) ? '<textarea class="notes-input" id="notesInput" placeholder="Observações ou solução aplicada..."></textarea>' : ''}
     `;
 
     document.getElementById('modalBackdrop').classList.add('open');
@@ -1070,15 +1078,26 @@
     state.selectedId = null;
   }
 
-  function resolveChamado(id) {
+  async function resolveChamado(id) {
     const c = state.chamados.find((item) => item.id === id);
     if (!c) return;
 
-    const now = new Date();
-    c.status = 'Fechado';
-    c.fechamento = `${now.toLocaleDateString('pt-BR')} ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
-    renderAll();
-    showToast(`Chamado ${id} marcado como resolvido.`, 'success');
+    try {
+      const response = await fetch(`/api/chamados/${c.dbId}/resolver`, {
+        method: 'PATCH'
+      });
+
+      if (!response.ok) throw new Error('Erro ao atualizar chamado');
+
+      const now = new Date();
+      c.status = 'Resolvido';
+      c.fechamento = `${now.toLocaleDateString('pt-BR')} ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+      renderAll();
+      showToast(`Chamado ${id} marcado como resolvido no banco.`, 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('Erro ao salvar resolução do chamado.', 'error');
+    }
   }
 
   // Navegação por abas
@@ -1156,9 +1175,9 @@
   // Modal
   document.getElementById('btnCloseModal').addEventListener('click', closeModal);
   document.getElementById('btnCancelModal').addEventListener('click', closeModal);
-  document.getElementById('btnResolveModal').addEventListener('click', () => {
+  document.getElementById('btnResolveModal').addEventListener('click', async () => {
     if (!state.selectedId) return;
-    resolveChamado(state.selectedId);
+    await resolveChamado(state.selectedId);
     closeModal();
   });
   document.getElementById('modalBackdrop').addEventListener('click', (e) => {
