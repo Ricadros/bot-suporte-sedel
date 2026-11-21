@@ -1,7 +1,8 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const sqlite3 = require('sqlite3').verbose();
+const { Pool } = require('pg');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -10,45 +11,50 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..')));
 
-// ─── BANCO DE DADOS (SQLITE) ────────────────────────────────────────────────
-const dbPath = path.join(__dirname, 'chamados.db');
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('❌ Erro ao conectar ao banco de dados:', err.message);
-  } else {
-    console.log('📦 Conectado ao banco de dados SQLite local.');
+// ─── BANCO DE DADOS (POSTGRESQL / SUPABASE) ─────────────────────────────────
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
+
+async function inicializarBanco() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS chamados (
+        id SERIAL PRIMARY KEY,
+        numero TEXT UNIQUE,
+        solicitante TEXT,
+        setor TEXT,
+        nivel TEXT,
+        prazo TEXT,
+        descricao TEXT,
+        status TEXT DEFAULT 'Pendente',
+        data_abertura TEXT
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS usuarios (
+        id SERIAL PRIMARY KEY,
+        email TEXT UNIQUE NOT NULL,
+        senha TEXT NOT NULL
+      )
+    `);
+
+    // Garante um usuário admin padrão caso o banco tenha sido criado do zero
+    await pool.query(`
+      INSERT INTO usuarios (email, senha)
+      VALUES ('admin@sedel.am.gov.br', 'admin123')
+      ON CONFLICT (email) DO NOTHING
+    `);
+
+    console.log('📦 Conectado ao PostgreSQL (Supabase) e tabelas verificadas.');
+  } catch (err) {
+    console.error('❌ Erro ao inicializar banco de dados:', err.message);
   }
-});
+}
 
-db.serialize(() => {
-  db.run(`
-    CREATE TABLE IF NOT EXISTS chamados (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      numero TEXT UNIQUE,
-      solicitante TEXT,
-      setor TEXT,
-      nivel TEXT,
-      prazo TEXT,
-      descricao TEXT,
-      status TEXT DEFAULT 'Pendente',
-      data_abertura TEXT
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS usuarios (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      email TEXT UNIQUE NOT NULL,
-      senha TEXT NOT NULL
-    )
-  `);
-
-  // Garante um usuário admin padrão caso o banco tenha sido recriado do zero
-  db.run(`
-    INSERT OR IGNORE INTO usuarios (email, senha)
-    VALUES ('admin@sedel.am.gov.br', 'admin123')
-  `);
-});
+inicializarBanco();
 
 // ─── CONFIGURAÇÃO DOS NÍVEIS DE SUPORTE ─────────────────────────────────────
 const niveisSuporteConfig = {
@@ -140,21 +146,38 @@ function obterOuCriarSessao(sessionId) {
 // ─── ROTAS DA API ───────────────────────────────────────────────────────────
 
 // Listar chamados (Painel ADM)
-app.get('/api/chamados', (req, res) => {
-  db.all('SELECT * FROM chamados ORDER BY id DESC', [], (err, rows) => {
-    if (err) {
-      return res.status(500).json({ erro: err.message });
-    }
+app.get('/api/chamados', async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM chamados ORDER BY id DESC');
     res.json(rows);
-  });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// Resolver chamado (Painel ADM)
+app.patch('/api/chamados/:id/resolver', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await pool.query(
+      "UPDATE chamados SET status = 'Resolvido' WHERE id = $1 RETURNING *",
+      [id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ erro: 'Chamado não encontrado' });
+    }
+
+    res.json({ sucesso: true, chamado: rows[0] });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
 });
 
 // Exportar chamados em CSV
-app.get('/api/chamados/exportar', (req, res) => {
-  db.all('SELECT * FROM chamados ORDER BY id DESC', [], (err, rows) => {
-    if (err) {
-      return res.status(500).json({ erro: err.message });
-    }
+app.get('/api/chamados/exportar', async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM chamados ORDER BY id DESC');
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename=relatorio_chamados_sedel.csv');
@@ -175,33 +198,38 @@ app.get('/api/chamados/exportar', (req, res) => {
     ].join(';'));
 
     res.send('\uFEFF' + [cabecalho, ...linhas].join('\n'));
-  });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
 });
 
 // Login do Painel ADM
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
   const { email, senha } = req.body;
 
   if (!email || !senha) {
     return res.status(400).json({ sucesso: false, erro: 'E-mail e senha são obrigatórios' });
   }
 
-  db.get('SELECT id, email FROM usuarios WHERE email = ? AND senha = ?', [email, senha], (err, row) => {
-    if (err) {
-      console.error('❌ Erro no login:', err.message);
-      return res.status(500).json({ sucesso: false, erro: 'Erro interno no servidor' });
-    }
+  try {
+    const { rows } = await pool.query(
+      'SELECT id, email FROM usuarios WHERE email = $1 AND senha = $2',
+      [email, senha]
+    );
 
-    if (row) {
+    if (rows.length > 0) {
       return res.json({ sucesso: true });
     }
 
     res.status(401).json({ sucesso: false, erro: 'Credenciais inválidas' });
-  });
+  } catch (err) {
+    console.error('❌ Erro no login:', err.message);
+    res.status(500).json({ sucesso: false, erro: 'Erro interno no servidor' });
+  }
 });
 
 // Fluxo do Bot de Atendimento
-app.post('/api/chat', (req, res) => {
+app.post('/api/chat', async (req, res) => {
   const { mensagem = '', sessionId } = req.body;
 
   if (!sessionId) {
@@ -276,30 +304,25 @@ app.post('/api/chat', (req, res) => {
         tipoChamado = `N${nivel}`;
 
         const dataAbertura = new Date().toLocaleString('pt-BR', { timeZone: 'America/Manaus' });
-        const sqlInsert = `
-          INSERT INTO chamados (numero, solicitante, setor, nivel, prazo, descricao, data_abertura)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
-        `;
 
-        db.run(
-          sqlInsert,
-          [
-            sessao.numeroChamado,
-            sessao.nome,
-            sessao.setor,
-            config.nome,
-            config.prazo,
-            sessao.descricaoProblema,
-            dataAbertura
-          ],
-          (err) => {
-            if (err) {
-              console.error(`❌ Erro ao gravar chamado ${sessao.numeroChamado}:`, err.message);
-            } else {
-              console.log(`💾 Chamado ${sessao.numeroChamado} salvo com sucesso.`);
-            }
-          }
-        );
+        try {
+          await pool.query(
+            `INSERT INTO chamados (numero, solicitante, setor, nivel, prazo, descricao, data_abertura)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [
+              sessao.numeroChamado,
+              sessao.nome,
+              sessao.setor,
+              config.nome,
+              config.prazo,
+              sessao.descricaoProblema,
+              dataAbertura
+            ]
+          );
+          console.log(`💾 Chamado ${sessao.numeroChamado} salvo no Supabase com sucesso.`);
+        } catch (err) {
+          console.error(`❌ Erro ao gravar chamado ${sessao.numeroChamado}:`, err.message);
+        }
 
         resposta = `Chamado registrado com sucesso.\n\n• Número do chamado: \`${sessao.numeroChamado}\`\n• Solicitante: ${sessao.nome}\n• Setor: ${sessao.setor}\n• Classificação: ${config.nome}\n• Prazo de atendimento: ${config.prazo}\n\nDescrição do Incidente:\n${sessao.descricaoProblema}\n\nPor favor, guarde o número do chamado para fins de acompanhamento. A equipe técnica entrará em contato.`;
       } else {
